@@ -1,8 +1,8 @@
-# sv
+# Overview
 
 A simple search engine for the [Nutrition Detective Youtube channel](https://www.youtube.com/@NutritionDetective).
 
-Built with Svelte5 and SvelteKit [`sv`](https://github.com/sveltejs/cli).
+Built with [Svelte5 and SvelteKit](https://svelte.dev/).
 
 ## Developing
 
