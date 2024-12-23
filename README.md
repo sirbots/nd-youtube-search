@@ -6,7 +6,9 @@ Built with [Svelte5 and SvelteKit](https://svelte.dev/).
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Once you've cloned the repo, run `npm install` to install the dependencies, create an .env files and add your own Youtube API key.
+
+Then start a development server:
 
 ```bash
 npm run dev
