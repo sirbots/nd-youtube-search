@@ -1,77 +1,86 @@
-// src/routes/+page.server.ts
-import { transcriptsData } from '$lib/transcripts';
-import type { Actions, PageServerLoad } from './$types';
+// Types
+import type { Actions } from './$types';
+import type { SearchResult, SearchResultSnippet, TranscriptSegment } from '$lib/types';
 
-/**
- * The load function can supply initial data if needed.
- * Here, we just provide an empty set of results by default.
- */
-export const load: PageServerLoad = async () => {
-	return {
-		results: [],
-		query: ''
-	};
-};
+// Helpers
+import { readdir, readFile } from 'fs/promises';
+import path from 'path';
 
-/**
- * Server actions for form submissions.
- * The name "search" must match the "action" attribute (or <button name="action" ...>).
- */
+// Constants
+const TRANSCRIPTS_DIR = 'src/lib/server/data/transcripts';
+
+// Functions
+function formatTimestamp(seconds: number): string {
+	const minutes = Math.floor(seconds / 60);
+	const remainingSeconds = Math.floor(seconds % 60);
+	return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+// Actions
 export const actions: Actions = {
 	search: async ({ request }) => {
 		const formData = await request.formData();
-		const query = formData.get('query')?.toString().trim() ?? '';
+		const query = formData.get('query')?.toString().toLowerCase() ?? '';
 
 		if (!query) {
-			// Return no results if the query is empty.
 			return { results: [], query };
 		}
 
-		const lowerQuery = query.toLowerCase();
+		const searchResults: SearchResult[] = [];
+		const videoResults = new Map<string, SearchResult>();
 
-		console.log('transcriptsData', transcriptsData);
-		console.log('lowerQuery', lowerQuery);
+		// Read all transcript files
+		const files = await readdir(TRANSCRIPTS_DIR);
 
-		const results: Array<{
-			videoId: string;
-			title: string;
-			matchedSnippets: Array<{
-				start: number;
-				text: string;
-			}>;
-		}> = [];
+		for (const file of files) {
+			if (!file.endsWith('.json')) continue;
 
-		console.log('results', results);
+			const content = await readFile(path.join(TRANSCRIPTS_DIR, file), 'utf-8');
+			const yearData = JSON.parse(content);
 
-		// Naive search across all transcripts
-		for (const video of transcriptsData) {
-			console.log('video', video);
-			const matchedSnippets: Array<{ start: number; text: string }> = [];
+			// Search through each video in the year's data
+			for (const videoId in yearData.videos) {
+				const video = yearData.videos[videoId];
 
-			for (const line of video.transcript) {
-				console.log('lowerQuery', lowerQuery);
-				console.log('line', line);
-				if (line.text.toLowerCase().includes(lowerQuery)) {
-					matchedSnippets.push({
-						start: line.start,
-						text: line.text
-					});
+				// Search through transcript segments
+				for (const segment of video.transcript) {
+					if (segment.text.toLowerCase().includes(query)) {
+						// Get or create video result entry
+						if (!videoResults.has(videoId)) {
+							videoResults.set(videoId, {
+								videoId: videoId,
+								title: video.title,
+								publishedAt: video.publishedAt,
+								snippets: [],
+								totalSnippets: 0
+							});
+						}
+
+						// Add all snippets to video's results (removed 3-snippet limit)
+						const currentResult = videoResults.get(videoId);
+						if (currentResult) {
+							currentResult.snippets.push({
+								timestamp: formatTimestamp(segment.offset),
+								snippet: segment.text
+							});
+						}
+					}
 				}
-			}
 
-			console.log('matchedSnippets', matchedSnippets);
-
-			if (matchedSnippets.length > 0) {
-				results.push({
-					videoId: video.videoId,
-					title: video.title,
-					matchedSnippets
-				});
+				// Total snippets count is now the same as snippets.length
+				const currentResult = videoResults.get(videoId);
+				if (currentResult) {
+					currentResult.totalSnippets = currentResult.snippets.length;
+				}
 			}
 		}
 
-		console.log('results', results);
+		// Convert Map to array of SearchResults
+		searchResults.push(...videoResults.values());
 
-		return { results, query };
+		return {
+			results: searchResults,
+			query
+		};
 	}
 };

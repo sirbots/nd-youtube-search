@@ -24,8 +24,15 @@ export interface TranscriptResponse {
 	duration: number;
 }
 
-interface SearchResult {
+export interface SearchResult {
 	videoId: string;
 	title: string;
-	matchedSnippets: { start: number; text: string }[];
+	publishedAt: string;
+	snippets: SearchResultSnippet[];
+	totalSnippets: number;
+}
+
+export interface SearchResultSnippet {
+	timestamp: string;
+	snippet: string;
 }
