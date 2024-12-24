@@ -17,6 +17,7 @@
 	let autoPlay = $state(false);
 	let expandedResults = $state<Record<string, boolean>>({});
 	let isSearching = $state(false);
+	let currentSort = $state('snippets'); // 'snippets', 'newest', or 'oldest'
 
 	// Helper function to decode HTML entities
 	function decodeHtmlEntities(text: string): string {
@@ -59,6 +60,22 @@
 		if (!query) return text;
 		const regex = new RegExp(`(${query})`, 'gi');
 		return text.replace(regex, '<span class="bg-yellow-200">$1</span>');
+	}
+
+	// Add these functions after your existing helper functions
+	function sortResults(results: any[]) {
+		if (currentSort === 'snippets') {
+			return [...results].sort((a, b) => b.snippets.length - a.snippets.length);
+		} else if (currentSort === 'newest') {
+			return [...results].sort(
+				(a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+			);
+		} else if (currentSort === 'oldest') {
+			return [...results].sort(
+				(a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()
+			);
+		}
+		return results;
 	}
 </script>
 
@@ -125,10 +142,23 @@
 			{#if form && form.results?.length > 0}
 				<h2 class="text-2xl font-bold mb-4">Results</h2>
 
+				<div class="w-full flex justify-center mb-4">
+					<select bind:value={currentSort} class="px-2 py-1 border rounded">
+						<option value="snippets">Sort by Matches</option>
+						<option value="newest">Sort by Most Recent</option>
+						<option value="oldest">Sort by Oldest</option>
+					</select>
+				</div>
+
 				<div class="search-results">
-					{#each form.results as result}
+					{#each sortResults(form.results) as result}
 						<div class="result-item mb-4 p-4 border rounded">
-							<h3 class="font-bold mb-2">{decodeHtmlEntities(result.title)}</h3>
+							<div class="flex justify-between items-start mb-2">
+								<h3 class="font-bold">{decodeHtmlEntities(result.title)}</h3>
+								<span class="text-sm text-gray-500">
+									{new Date(result.publishedAt).toLocaleDateString()}
+								</span>
+							</div>
 							<div class="mt-4 flex flex-col items-start gap-y-6">
 								{#each result.snippets.slice(0, expandedResults[result.videoId] ? undefined : 3) as snippet}
 									<div class="flex flex-col items-start gap-y-2">
