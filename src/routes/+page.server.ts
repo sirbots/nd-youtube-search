@@ -1,13 +1,16 @@
 // Types
 import type { Actions } from './$types';
-import type { SearchResult, SearchResultSnippet, TranscriptSegment } from '$lib/types';
+import type { SearchResult, SearchResultSnippet, TranscriptSegment, VideoData } from '$lib/types';
 
 // Helpers
-import { readdir, readFile } from 'fs/promises';
-import path from 'path';
+import { Redis } from '@upstash/redis';
+import { KV_REST_API_URL, KV_REST_API_TOKEN } from '$env/static/private';
 
-// Constants
-const TRANSCRIPTS_DIR = 'src/lib/server/data/transcripts';
+// Initialize Redis client
+const redis = new Redis({
+	url: KV_REST_API_URL,
+	token: KV_REST_API_TOKEN
+});
 
 // Functions
 function formatTimestamp(seconds: number): string {
@@ -29,49 +32,48 @@ export const actions: Actions = {
 		const searchResults: SearchResult[] = [];
 		const videoResults = new Map<string, SearchResult>();
 
-		// Read all transcript files
-		const files = await readdir(TRANSCRIPTS_DIR);
+		// Get all video keys from Redis
+		const videoKeys = await redis.keys('video:*');
 
-		for (const file of files) {
-			if (!file.endsWith('.json')) continue;
+		// Process each video
+		for (const key of videoKeys) {
+			const video = await redis.get<VideoData>(key);
+			if (!video) continue;
 
-			const content = await readFile(path.join(TRANSCRIPTS_DIR, file), 'utf-8');
-			const yearData = JSON.parse(content);
+			const videoId = key.replace('video:', '');
 
-			// Search through each video in the year's data
-			for (const videoId in yearData.videos) {
-				const video = yearData.videos[videoId];
+			// Skip videos with disabled transcripts
+			if (video.transcriptDisabled) continue;
 
-				// Search through transcript segments
-				for (const segment of video.transcript) {
-					if (segment.text.toLowerCase().includes(query)) {
-						// Get or create video result entry
-						if (!videoResults.has(videoId)) {
-							videoResults.set(videoId, {
-								videoId: videoId,
-								title: video.title,
-								publishedAt: video.publishedAt,
-								snippets: [],
-								totalSnippets: 0
-							});
-						}
+			// Search through transcript segments
+			for (const segment of video.transcript) {
+				if (segment.text.toLowerCase().includes(query)) {
+					// Get or create video result entry
+					if (!videoResults.has(videoId)) {
+						videoResults.set(videoId, {
+							videoId: videoId,
+							title: video.title,
+							publishedAt: video.publishedAt,
+							snippets: [],
+							totalSnippets: 0
+						});
+					}
 
-						// Add all snippets to video's results (removed 3-snippet limit)
-						const currentResult = videoResults.get(videoId);
-						if (currentResult) {
-							currentResult.snippets.push({
-								timestamp: formatTimestamp(segment.offset),
-								snippet: segment.text
-							});
-						}
+					// Add snippet to video's results
+					const currentResult = videoResults.get(videoId);
+					if (currentResult) {
+						currentResult.snippets.push({
+							timestamp: formatTimestamp(segment.offset),
+							snippet: segment.text
+						});
 					}
 				}
+			}
 
-				// Total snippets count is now the same as snippets.length
-				const currentResult = videoResults.get(videoId);
-				if (currentResult) {
-					currentResult.totalSnippets = currentResult.snippets.length;
-				}
+			// Update total snippets count
+			const currentResult = videoResults.get(videoId);
+			if (currentResult) {
+				currentResult.totalSnippets = currentResult.snippets.length;
 			}
 		}
 

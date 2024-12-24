@@ -5,19 +5,22 @@ import type { GaxiosResponse } from 'googleapis-common';
 // Helpers
 import { google } from 'googleapis';
 import { YoutubeTranscript } from 'youtube-transcript';
-import { writeFile, readFile, mkdir, readdir } from 'fs/promises';
 import { youtube_v3 } from 'googleapis';
+import { Redis } from '@upstash/redis';
 
 // Data
-import { YOUTUBE_API_KEY } from '$env/static/private';
+import { YOUTUBE_API_KEY, KV_REST_API_URL, KV_REST_API_TOKEN } from '$env/static/private';
+
+// Initialize Redis client
+const redis = new Redis({
+	url: KV_REST_API_URL,
+	token: KV_REST_API_TOKEN
+});
 
 export const youtube = google.youtube({
 	version: 'v3',
 	auth: YOUTUBE_API_KEY
 });
-
-// New correct ID
-const TRANSCRIPTS_DIR = 'src/lib/server/data/transcripts';
 
 // Add this function to get the uploads playlist ID
 async function getUploadsPlaylistId(channelId: string) {
@@ -46,22 +49,10 @@ export async function updateTranscripts(): Promise<TranscriptDB> {
 	}
 	console.log('channelId', channelId);
 
-	// Create directory if it doesn't exist
-	await mkdir(TRANSCRIPTS_DIR, { recursive: true });
-
-	// Get current year
-	const currentYear = new Date().getFullYear().toString();
-
-	// Initialize transcript DB for current year only
+	// Initialize transcript DB
 	let transcriptDB: TranscriptDB = { videos: {} };
 
-	// Load existing transcript for current year only
-	try {
-		const content = await readFile(`${TRANSCRIPTS_DIR}/${currentYear}.json`, 'utf-8');
-		transcriptDB = JSON.parse(content);
-	} catch {}
-
-	// Pass the channelId to getUploadsPlaylistId
+	// Get uploads playlist ID
 	const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
 	if (!uploadsPlaylistId) {
 		throw new Error('Could not find uploads playlist');
@@ -81,29 +72,22 @@ export async function updateTranscripts(): Promise<TranscriptDB> {
 			});
 
 		if (response.data.items) {
-			// Filter items for current year only
-			const currentYearItems = response.data.items.filter((item) => {
-				const publishedAt = item.snippet?.publishedAt;
-				return publishedAt && new Date(publishedAt).getFullYear().toString() === currentYear;
-			});
-			items.push(...currentYearItems);
+			items.push(...response.data.items);
 		}
 
 		pageToken = response.data.nextPageToken || undefined;
 	} while (pageToken);
 
-	// Process videos for current year only
-	const yearDB: TranscriptDB = transcriptDB;
-
 	for (const item of items) {
 		const videoId = item.snippet?.resourceId?.videoId;
 		if (!videoId || !item.snippet) continue;
 
-		// Skip if we already have this video's transcript
-		if (yearDB.videos[videoId]) continue;
-
-		const publishedAt = item.snippet.publishedAt || new Date().toISOString();
-		const year = new Date(publishedAt).getFullYear().toString();
+		// Check if we already have this video's transcript
+		const existingVideo = await redis.get<VideoData>(`video:${videoId}`);
+		if (existingVideo) {
+			transcriptDB.videos[videoId] = existingVideo;
+			continue;
+		}
 
 		console.log('Getting transcript for', item.snippet.title);
 
@@ -122,12 +106,13 @@ export async function updateTranscripts(): Promise<TranscriptDB> {
 				updatedAt: new Date().toISOString()
 			};
 
-			yearDB.videos[videoId] = videoData;
+			// Store individual video data
+			await redis.set(`video:${videoId}`, videoData);
+			transcriptDB.videos[videoId] = videoData;
 		} catch (err: any) {
-			// Add specific handling for disabled transcripts
 			if (err.toString().includes('Transcript is disabled')) {
 				console.log(`Skipping video ${videoId}: Transcript is disabled`);
-				yearDB.videos[videoId] = {
+				const videoData = {
 					id: videoId,
 					title: item.snippet.title || '',
 					publishedAt: item.snippet.publishedAt || new Date().toISOString(),
@@ -135,15 +120,14 @@ export async function updateTranscripts(): Promise<TranscriptDB> {
 					updatedAt: new Date().toISOString(),
 					transcriptDisabled: true
 				};
+				// Store disabled transcript info
+				await redis.set(`video:${videoId}`, videoData);
+				transcriptDB.videos[videoId] = videoData;
 			} else {
 				console.error(`Failed to get transcript for video ${videoId}:`, err);
 			}
 		}
 	}
 
-	// Save current year's transcripts
-	await writeFile(`${TRANSCRIPTS_DIR}/${currentYear}.json`, JSON.stringify(yearDB, null, 2));
-
-	// Return current year's transcript DB
-	return yearDB;
+	return transcriptDB;
 }

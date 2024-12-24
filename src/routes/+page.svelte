@@ -37,9 +37,14 @@
 	function toggleExpansion(videoId: string) {
 		expandedResults[videoId] = !expandedResults[videoId];
 	}
+
+	async function fetchTranscriptsAndSaveToDatabase() {
+		const transcripts = await fetch(`/api/youtube/test`).then((res) => res.json());
+		console.log(transcripts);
+	}
 </script>
 
-<!-- <button onclick={testYoutubeAPI}> Test Youtube API </button> -->
+<button onclick={fetchTranscriptsAndSaveToDatabase}> Test Youtube API </button>
 
 <div class="w-full flex flex-row items-center justify-end px-12 py-6">
 	<a href="https://www.youtube.com/@nutritiondetective" target="_blank" rel="noopener noreferrer">
