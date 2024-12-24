@@ -3,5 +3,11 @@
 		"api/*.ts": {
 			"maxDuration": 90
 		}
-	}
+	},
+	"crons": [
+		{
+			"path": "/api/writeTranscriptsToRedis",
+			"schedule": "0 0 * * 3"
+		}
+	]
 }
