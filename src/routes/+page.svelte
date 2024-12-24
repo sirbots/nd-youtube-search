@@ -124,6 +124,9 @@
 			{#if isSearching}
 				<p class="text-gray-600 animate-pulse italic">Searching transcripts...</p>
 			{/if}
+			<p class="text-gray-600 italic">
+				Tip: use short search phrases like "vitamin A" or "bile acid" for better results.
+			</p>
 		</div>
 
 		<div
