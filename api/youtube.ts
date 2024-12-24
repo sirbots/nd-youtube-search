@@ -1,5 +1,5 @@
 // Types
-import type { TranscriptDB, VideoData } from '$lib/types';
+import type { TranscriptDB, VideoData } from '$lib/types/types';
 import type { GaxiosResponse } from 'googleapis-common';
 
 // Helpers
