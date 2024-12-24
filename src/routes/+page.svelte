@@ -96,7 +96,7 @@
 
 <div class="w-full flex flex-row items-center justify-end px-12 py-6">
 	<a href="https://www.youtube.com/@nutritiondetective" target="_blank" rel="noopener noreferrer">
-		Go to Channel
+		<button class="bg-indigo-500 text-white px-4 py-1 rounded">Go to Channel</button>
 	</a>
 </div>
 
