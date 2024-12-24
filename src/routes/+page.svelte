@@ -2,6 +2,9 @@
 	// Types
 	import type { ActionData } from './$types';
 
+	// Helpers
+	import { enhance } from '$app/forms';
+
 	// Components
 	import { Play, Link } from 'lucide-svelte';
 
@@ -11,6 +14,7 @@
 	let currentVideoId = $state<string | null>(null);
 	let autoPlay = $state(false);
 	let expandedResults = $state<Record<string, boolean>>({});
+	let isSearching = $state(false);
 
 	// Helper function to decode HTML entities
 	function decodeHtmlEntities(text: string): string {
@@ -55,20 +59,38 @@
 <div class="container w-full flex flex-col items-center py-12 gap-y-12">
 	<div class="flex flex-col items-center gap-y-4">
 		<h1 class="text-3xl font-bold mb-4">Nutrition Detective Transcript Search</h1>
-		<form method="POST" action="?/search" class="mb-4">
+		<form
+			method="POST"
+			action="?/search"
+			class="mb-4"
+			use:enhance={() => {
+				isSearching = true;
+
+				return async ({ update }) => {
+					await update();
+					isSearching = false;
+				};
+			}}
+		>
 			<input
 				type="text"
 				name="query"
 				placeholder="Search transcripts..."
 				class="px-2 py-1 border rounded"
+				disabled={isSearching}
 			/>
 			<button
 				type="submit"
-				class="ml-3 px-2 py-1 bg-indigo-500 border-2 border-indigo-500 text-white text-semibold hover:bg-white hover:text-indigo-500 hover:border-indigo-500 hover:border-2 rounded"
+				class="ml-3 px-2 py-1 bg-indigo-500 border-2 border-indigo-500 text-white text-semibold hover:bg-white hover:text-indigo-500 hover:border-indigo-500 hover:border-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+				disabled={isSearching}
 			>
-				Search
+				{isSearching ? 'Searching...' : 'Search'}
 			</button>
 		</form>
+
+		{#if isSearching}
+			<p class="text-gray-600 animate-pulse italic">Searching transcripts...</p>
+		{/if}
 	</div>
 
 	<div class="flex flex-row gap-x-8 w-full min-h-screen">
@@ -122,7 +144,7 @@
 						</div>
 					{/each}
 				</div>
-			{:else if form && form.results?.length === 0}
+			{:else if !isSearching && form && form.results?.length === 0}
 				<p>No results found</p>
 			{:else}
 				<p>Your search results will appear here.</p>
