@@ -53,6 +53,13 @@
 		const transcripts = await fetch(`/api/write-transcripts-to-redis`).then((res) => res.json());
 		console.log(transcripts);
 	}
+
+	// Add this helper function near your other helper functions
+	function highlightSearchText(text: string, query: string): string {
+		if (!query) return text;
+		const regex = new RegExp(`(${query})`, 'gi');
+		return text.replace(regex, '<span class="bg-yellow-200">$1</span>');
+	}
 </script>
 
 {#if ENV_MODE === 'development'}
@@ -125,7 +132,9 @@
 							<div class="mt-4 flex flex-col items-start gap-y-6">
 								{#each result.snippets.slice(0, expandedResults[result.videoId] ? undefined : 3) as snippet}
 									<div class="flex flex-col items-start gap-y-2">
-										<span class="italic">"{decodeHtmlEntities(snippet.snippet)}"</span>
+										<span class="italic">
+											{@html highlightSearchText(decodeHtmlEntities(snippet.snippet), form.query)}
+										</span>
 										<div class="flex flex-row items-center gap-x-2">
 											<!-- Timestamp -->
 											<span> Timestamp: {snippet.timestamp}</span>
