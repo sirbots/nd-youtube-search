@@ -79,6 +79,15 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Nutrition Detective Transcript Search</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta
+		name="description"
+		content="Search Nutrition Detective's YouTube channel for specific topics."
+	/>
+</svelte:head>
+
 {#if ENV_MODE === 'development'}
 	<button onclick={fetchTranscriptsAndSaveToRedis}>Save Transcripts to Redis</button>
 	<button onclick={fetchTranscriptsAndSaveToJson}>Save Transcripts to JSON</button>
