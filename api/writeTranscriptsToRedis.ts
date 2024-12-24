@@ -11,7 +11,7 @@ import { Redis } from '@upstash/redis';
 // Data
 import { YOUTUBE_API_KEY, KV_REST_API_URL, KV_REST_API_TOKEN } from '$env/static/private';
 
-const transcripts2024Json = require('$lib/data/transcripts/2024.json');
+import transcripts2024Json from '$lib/data/transcripts/2024.json';
 const transcripts2024 = transcripts2024Json as TranscriptDB;
 
 // Initialize Redis client
