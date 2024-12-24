@@ -66,7 +66,10 @@ async function processVideoSearch(
 	query: string,
 	videoResults: Map<string, SearchResult>
 ) {
-	for (const segment of video.transcript) {
+	const transcript = video.transcript;
+
+	for (let i = 0; i < transcript.length; i++) {
+		const segment = transcript[i];
 		if (segment.text.toLowerCase().includes(query)) {
 			if (!videoResults.has(videoId)) {
 				videoResults.set(videoId, {
@@ -78,11 +81,19 @@ async function processVideoSearch(
 				});
 			}
 
+			// Get surrounding segments
+			const start = Math.max(0, i - 2);
+			const end = Math.min(transcript.length - 1, i + 2);
+			const contextSegments = transcript.slice(start, end + 1);
+
+			// Combine the segments into one snippet
+			const combinedText = contextSegments.map((seg) => seg.text).join(' ');
+
 			const currentResult = videoResults.get(videoId);
 			if (currentResult) {
 				currentResult.snippets.push({
 					timestamp: formatTimestamp(segment.offset),
-					snippet: segment.text
+					snippet: combinedText
 				});
 				currentResult.totalSnippets = currentResult.snippets.length;
 			}
