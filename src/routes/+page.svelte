@@ -235,6 +235,14 @@
 					Auto-play when loaded
 				</label>
 			</div>
+			<div class="mt-20">
+				Built and maintained by <a href="https://x.com/fun_and_profit" target="_blank">@sirbots</a>.
+				Not affiliated with Nutrition Detective. Released under the
+				<a
+					href="https://github.com/sirbots/nutrition-detective-search/blob/main/LICENSE"
+					target="_blank">GNU GPLv3 License</a
+				>. All YouTube content belongs to their respective owners.
+			</div>
 		</div>
 	</div>
 </div>
