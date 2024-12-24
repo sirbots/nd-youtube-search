@@ -1,6 +1,6 @@
 // Types
 import type { Actions } from './$types';
-import type { SearchResult, SearchResultSnippet, TranscriptSegment, VideoData } from '$lib/types';
+import type { SearchResult, VideoData } from '$lib/types';
 
 // Helpers
 import { Redis } from '@upstash/redis';

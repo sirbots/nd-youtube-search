@@ -84,8 +84,15 @@ export async function updateTranscripts(): Promise<TranscriptDB> {
 
 		// Check if we already have this video's transcript
 		const existingVideo = await redis.get<VideoData>(`video:${videoId}`);
-		if (existingVideo) {
+
+		// Add check for content changes
+		if (
+			existingVideo &&
+			existingVideo.title === item.snippet.title &&
+			existingVideo.publishedAt === item.snippet.publishedAt
+		) {
 			transcriptDB.videos[videoId] = existingVideo;
+			console.log(`Skipping video ${videoId}: No changes detected`);
 			continue;
 		}
 
@@ -106,8 +113,17 @@ export async function updateTranscripts(): Promise<TranscriptDB> {
 				updatedAt: new Date().toISOString()
 			};
 
-			// Store individual video data
-			await redis.set(`video:${videoId}`, videoData);
+			// Only write if content is different
+			if (
+				!existingVideo ||
+				JSON.stringify(existingVideo.transcript) !== JSON.stringify(videoData.transcript)
+			) {
+				await redis.set(`video:${videoId}`, videoData);
+				console.log(`Updated video ${videoId}: Content changed`);
+			} else {
+				console.log(`Skipping video ${videoId}: Transcript unchanged`);
+			}
+
 			transcriptDB.videos[videoId] = videoData;
 		} catch (err: any) {
 			if (err.toString().includes('Transcript is disabled')) {
