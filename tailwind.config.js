@@ -6,12 +6,12 @@ export default {
 		container: {
 			center: true,
 			padding: {
-				DEFAULT: '4rem',
-				sm: '4rem',
-				md: '4rem',
-				lg: '4rem',
-				xl: '4rem',
-				'2xl': '4rem'
+				DEFAULT: '2rem',
+				sm: '2rem',
+				md: '2rem',
+				lg: '3rem',
+				xl: '6rem',
+				'2xl': '8rem'
 			},
 			// padding: '3rem',
 			screens: {

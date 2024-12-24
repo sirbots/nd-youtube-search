@@ -80,77 +80,95 @@
 </script>
 
 {#if ENV_MODE === 'development'}
-	<button
-		class="bg-indigo-500 text-white px-4 py-1 rounded"
-		onclick={fetchTranscriptsAndSaveToRedis}
-	>
-		Save Transcripts to Redis
-	</button>
-	<button
-		class="bg-indigo-500 text-white px-4 py-1 rounded"
-		onclick={fetchTranscriptsAndSaveToJson}
-	>
-		Save Transcripts to JSON
-	</button>
+	<button onclick={fetchTranscriptsAndSaveToRedis}>Save Transcripts to Redis</button>
+	<button onclick={fetchTranscriptsAndSaveToJson}>Save Transcripts to JSON</button>
 {/if}
 
-<div class="w-full flex flex-row items-center justify-end px-12 py-6">
+<div class="w-full flex flex-row items-center justify-center md:justify-end px-12 py-6">
 	<a href="https://www.youtube.com/@nutritiondetective" target="_blank" rel="noopener noreferrer">
-		<button class="bg-indigo-500 text-white px-4 py-1 rounded">Go to Channel</button>
+		<button>Go to Channel</button>
 	</a>
 </div>
 
-<div class="container w-full flex flex-col items-center py-12 gap-y-12">
-	<div class="flex flex-col items-center gap-y-4">
-		<h1 class="text-3xl font-bold mb-4">Nutrition Detective Transcript Search</h1>
-		<form
-			method="POST"
-			action="?/search"
-			class="mb-4"
-			use:enhance={() => {
-				isSearching = true;
+<div class="h-screen flex flex-col items-center justify-between">
+	<div class="container w-full flex flex-col items-center py-12 gap-y-12">
+		<div class="flex flex-col items-center gap-y-4">
+			<h1 class="text-2xl md:text-3xl font-bold mb-4 text-center">
+				Nutrition Detective Transcript Search
+			</h1>
+			<form
+				method="POST"
+				action="?/search"
+				class="mb-4 flex flex-col items-center md:flex-row md:gap-x-4"
+				use:enhance={() => {
+					isSearching = true;
 
-				return async ({ update }) => {
-					await update();
-					isSearching = false;
-				};
-			}}
-		>
-			<input
-				type="text"
-				name="query"
-				placeholder="Search transcripts..."
-				class="px-2 py-1 border rounded"
-				disabled={isSearching}
-			/>
-			<button
-				type="submit"
-				class="ml-3 px-2 py-1 bg-indigo-500 border-2 border-indigo-500 text-white text-semibold hover:bg-white hover:text-indigo-500 hover:border-indigo-500 hover:border-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-				disabled={isSearching}
+					return async ({ update }) => {
+						await update();
+						isSearching = false;
+					};
+				}}
 			>
-				{isSearching ? 'Searching...' : 'Search'}
-			</button>
-		</form>
+				<input
+					type="text"
+					name="query"
+					placeholder="Search transcripts..."
+					class="px-2 py-1 border rounded"
+					disabled={isSearching}
+				/>
+				<button class="w-full mt-2 md:mt-0 md:w-1/2" type="submit" disabled={isSearching}>
+					{isSearching ? 'Searching...' : 'Search'}
+				</button>
+			</form>
 
-		{#if isSearching}
-			<p class="text-gray-600 animate-pulse italic">Searching transcripts...</p>
-		{/if}
-	</div>
+			{#if isSearching}
+				<p class="text-gray-600 animate-pulse italic">Searching transcripts...</p>
+			{/if}
+		</div>
 
-	<div class="flex flex-row gap-x-8 w-full min-h-screen">
-		<div class="flex flex-col items-center gap-y-4 w-1/2">
+		<div
+			class="flex mt-0 md:mt-16 flex-col md:items-start items-center gap-y-4 w-full md:flex-row-reverse md:gap-x-8"
+		>
 			{#if form && form.results?.length > 0}
-				<h2 class="text-2xl font-bold mb-4">Results</h2>
+				<div class="md:w-1/2 sticky top-0 md:top-8 h-fit bg-white w-full">
+					{#if currentVideoId}
+						<div class="aspect-video">
+							<iframe
+								width="100%"
+								height="100%"
+								src={`https://www.youtube.com/embed/${currentVideoId}${autoPlay ? '&autoplay=1' : ''}`}
+								title="YouTube video player"
+								frameborder="0"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+								allowfullscreen
+							></iframe>
+						</div>
+					{:else}
+						<div class="aspect-video bg-gray-100 flex items-center justify-center">
+							<p class="text-gray-500">Select a video to play</p>
+						</div>
+					{/if}
 
-				<div class="w-full flex justify-center mb-4">
-					<select bind:value={currentSort} class="px-2 py-1 border rounded">
-						<option value="snippets">Sort by Matches</option>
-						<option value="newest">Sort by Most Recent</option>
-						<option value="oldest">Sort by Oldest</option>
-					</select>
+					<div class="flex flex-col md:items-start items-center gap-y-2 mt-2 pb-4">
+						<label
+							class="flex items-center gap-x-2 text-gray-600 hover:text-indigo-500 cursor-pointer"
+						>
+							<input type="checkbox" class="form-checkbox" bind:checked={autoPlay} />
+							Auto-play
+						</label>
+					</div>
 				</div>
 
-				<div class="search-results">
+				<div class="flex flex-col items-center md:w-1/2">
+					<h2 class="text-xl md:text-2xl font-bold mb-4">Results</h2>
+					<div class="w-full flex justify-center mb-4">
+						<select bind:value={currentSort} class="px-2 py-1 border rounded">
+							<option value="snippets">Sort by Matches</option>
+							<option value="newest">Sort by Most Recent</option>
+							<option value="oldest">Sort by Oldest</option>
+						</select>
+					</div>
+
 					{#each sortResults(form.results) as result}
 						<div class="result-item mb-4 p-4 border rounded">
 							<div class="flex justify-between items-start mb-2">
@@ -171,19 +189,20 @@
 
 											<!-- Play button -->
 											<button
-												class="text-gray-600 hover:text-indigo-500"
+												class="bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded"
 												onclick={() => handleVideoSelect(result.videoId, snippet.timestamp)}
 											>
-												<Play size={20} />
+												<Play size={12} />
 											</button>
 
 											<!-- Link to YouTube -->
 											<a
 												href={generateYoutubeTimestampUrl(result.videoId, snippet.timestamp)}
+												class="bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded"
 												target="_blank"
 												rel="noopener noreferrer"
 											>
-												<Link size={20} />
+												<Link size={12} />
 											</a>
 										</div>
 									</div>
@@ -191,7 +210,7 @@
 
 								{#if result.snippets.length > 3}
 									<button
-										class="text-indigo-500 hover:text-indigo-700 font-medium"
+										class="bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded"
 										onclick={() => toggleExpansion(result.videoId)}
 									>
 										{expandedResults[result.videoId]
@@ -206,43 +225,16 @@
 			{:else if !isSearching && form && form.results?.length === 0}
 				<p>No results found</p>
 			{:else}
-				<p>Your search results will appear here.</p>
+				<p></p>
 			{/if}
 		</div>
-		<div class="w-1/2 sticky top-4 h-fit">
-			{#if currentVideoId}
-				<div class="aspect-video">
-					<iframe
-						width="100%"
-						height="100%"
-						src={`https://www.youtube.com/embed/${currentVideoId}${autoPlay ? '&autoplay=1' : ''}`}
-						title="YouTube video player"
-						frameborder="0"
-						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-						allowfullscreen
-					></iframe>
-				</div>
-			{:else}
-				<div class="aspect-video bg-gray-100 flex items-center justify-center">
-					<p class="text-gray-500">Select a video to play</p>
-				</div>
-			{/if}
-
-			<h4 class="text-lg font-bold mt-8">Options</h4>
-			<div class="flex flex-col items-start gap-y-2">
-				<label class="flex items-center gap-x-2 text-gray-600 hover:text-indigo-500 cursor-pointer">
-					<input type="checkbox" class="form-checkbox" bind:checked={autoPlay} />
-					Auto-play when loaded
-				</label>
-			</div>
-			<div class="mt-20">
-				Built and maintained by <a href="https://x.com/fun_and_profit" target="_blank">@sirbots</a>.
-				Not affiliated with Nutrition Detective. Released under the
-				<a
-					href="https://github.com/sirbots/nutrition-detective-search/blob/main/LICENSE"
-					target="_blank">GNU GPLv3 License</a
-				>. All YouTube content belongs to their respective owners.
-			</div>
-		</div>
+	</div>
+	<div class=" mt-4 container py-12">
+		Built and maintained by <a href="https://x.com/fun_and_profit" target="_blank">@sirbots</a>. Not
+		affiliated with Nutrition Detective. Released under the
+		<a
+			href="https://github.com/sirbots/nutrition-detective-search/blob/main/LICENSE"
+			target="_blank">GNU GPLv3 License</a
+		>. All YouTube content belongs to their respective owners.
 	</div>
 </div>
