@@ -9,6 +9,8 @@
 	import { Play, Link } from 'lucide-svelte';
 
 	// Data
+	const ENV_MODE = import.meta.env.MODE;
+
 	let { form }: { form: ActionData } = $props();
 
 	let currentVideoId = $state<string | null>(null);
@@ -42,13 +44,31 @@
 		expandedResults[videoId] = !expandedResults[videoId];
 	}
 
-	async function fetchTranscriptsAndSaveToDatabase() {
-		const transcripts = await fetch(`/api/youtube/test`).then((res) => res.json());
+	async function fetchTranscriptsAndSaveToJson() {
+		const transcripts = await fetch(`/api/write-transcripts-to-json`).then((res) => res.json());
+		console.log(transcripts);
+	}
+
+	async function fetchTranscriptsAndSaveToRedis() {
+		const transcripts = await fetch(`/api/write-transcripts-to-redis`).then((res) => res.json());
 		console.log(transcripts);
 	}
 </script>
 
-<button onclick={fetchTranscriptsAndSaveToDatabase}> Test Youtube API </button>
+{#if ENV_MODE === 'development'}
+	<button
+		class="bg-indigo-500 text-white px-4 py-1 rounded"
+		onclick={fetchTranscriptsAndSaveToRedis}
+	>
+		Save Transcripts to Redis
+	</button>
+	<button
+		class="bg-indigo-500 text-white px-4 py-1 rounded"
+		onclick={fetchTranscriptsAndSaveToJson}
+	>
+		Save Transcripts to JSON
+	</button>
+{/if}
 
 <div class="w-full flex flex-row items-center justify-end px-12 py-6">
 	<a href="https://www.youtube.com/@nutritiondetective" target="_blank" rel="noopener noreferrer">

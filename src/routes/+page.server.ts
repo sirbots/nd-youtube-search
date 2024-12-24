@@ -1,16 +1,9 @@
 // Types
 import type { Actions } from './$types';
-import type { SearchResult, VideoData } from '$lib/types/types';
+import type { SearchResult, VideoData, TranscriptDB } from '$lib/types/types';
 
 // Helpers
-import { Redis } from '@upstash/redis';
-import { KV_REST_API_URL, KV_REST_API_TOKEN } from '$env/static/private';
-
-// Initialize Redis client
-const redis = new Redis({
-	url: KV_REST_API_URL,
-	token: KV_REST_API_TOKEN
-});
+import { redis } from '$lib/server/redis';
 
 // Functions
 function formatTimestamp(seconds: number): string {
@@ -19,70 +12,80 @@ function formatTimestamp(seconds: number): string {
 	return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+// Add this import at the top
+const transcriptFiles = import.meta.glob('/src/lib/data/transcripts/*.json', { eager: true });
+
 // Actions
 export const actions: Actions = {
 	search: async ({ request }) => {
 		const formData = await request.formData();
 		const query = formData.get('query')?.toString().toLowerCase() ?? '';
 
+		console.log('Performing search for:', query);
+
 		if (!query) {
+			console.log('No query provided');
 			return { results: [], query };
 		}
 
-		const searchResults: SearchResult[] = [];
 		const videoResults = new Map<string, SearchResult>();
 
-		// Get all video keys from Redis
+		// 1. Search Redis database
+		console.log('Searching Redis database...');
 		const videoKeys = await redis.keys('video:*');
-
-		// Process each video
 		for (const key of videoKeys) {
 			const video = await redis.get<VideoData>(key);
-			if (!video) continue;
+			if (!video || video.transcriptDisabled) continue;
+			await processVideoSearch(video, key.replace('video:', ''), query, videoResults);
+		}
 
-			const videoId = key.replace('video:', '');
+		// 2. Search JSON files
+		console.log('Searching JSON files...');
+		for (const [path, module] of Object.entries(transcriptFiles)) {
+			const transcriptDB = module as { default: TranscriptDB };
 
-			// Skip videos with disabled transcripts
-			if (video.transcriptDisabled) continue;
+			for (const [videoId, video] of Object.entries(transcriptDB.default.videos)) {
+				// Skip if already found in Redis
+				if (videoResults.has(videoId)) continue;
 
-			// Search through transcript segments
-			for (const segment of video.transcript) {
-				if (segment.text.toLowerCase().includes(query)) {
-					// Get or create video result entry
-					if (!videoResults.has(videoId)) {
-						videoResults.set(videoId, {
-							videoId: videoId,
-							title: video.title,
-							publishedAt: video.publishedAt,
-							snippets: [],
-							totalSnippets: 0
-						});
-					}
-
-					// Add snippet to video's results
-					const currentResult = videoResults.get(videoId);
-					if (currentResult) {
-						currentResult.snippets.push({
-							timestamp: formatTimestamp(segment.offset),
-							snippet: segment.text
-						});
-					}
-				}
-			}
-
-			// Update total snippets count
-			const currentResult = videoResults.get(videoId);
-			if (currentResult) {
-				currentResult.totalSnippets = currentResult.snippets.length;
+				await processVideoSearch(video, videoId, query, videoResults);
 			}
 		}
 
-		// Convert Map to array of SearchResults
-		searchResults.push(...videoResults.values());
-
 		return {
-			results: searchResults,
+			results: Array.from(videoResults.values()),
 			query
 		};
 	}
 };
+
+// Helper function to process search for a single video
+async function processVideoSearch(
+	video: VideoData,
+	videoId: string,
+	query: string,
+	videoResults: Map<string, SearchResult>
+) {
+	for (const segment of video.transcript) {
+		if (segment.text.toLowerCase().includes(query)) {
+			if (!videoResults.has(videoId)) {
+				videoResults.set(videoId, {
+					videoId,
+					title: video.title,
+					publishedAt: video.publishedAt,
+					snippets: [],
+					totalSnippets: 0
+				});
+			}
+
+			const currentResult = videoResults.get(videoId);
+			if (currentResult) {
+				currentResult.snippets.push({
+					timestamp: formatTimestamp(segment.offset),
+					snippet: segment.text
+				});
+				currentResult.totalSnippets = currentResult.snippets.length;
+			}
+		}
+	}
+}
