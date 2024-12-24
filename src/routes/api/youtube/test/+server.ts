@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 
 // Helpers
 import { json } from '@sveltejs/kit';
-import { updateTranscripts } from '../../../../api/youtube';
+import { updateTranscripts } from '../../../../../api/youtube';
 
 export const GET: RequestHandler = async () => {
 	try {
