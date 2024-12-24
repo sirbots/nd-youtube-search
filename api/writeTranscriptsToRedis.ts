@@ -55,7 +55,7 @@ async function clearRedisDB() {
 }
 
 export async function writeTranscriptsToRedis(): Promise<TranscriptDB> {
-	// Clear Redis DB
+	// Clear Redis DB -- use this after updating a JSON file at the end of the year. That way, the new year's JSON file will be used and we'll save on Redis storage and processing time.
 	// await clearRedisDB();
 
 	const channelId = await getChannelId('NutritionDetective');
