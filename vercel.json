@@ -1,6 +1,6 @@
 {
 	"functions": {
-		"src/lib/server/**/*.ts": {
+		"api/**/*.ts": {
 			"maxDuration": 90
 		}
 	}
